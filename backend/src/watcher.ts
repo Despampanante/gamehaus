@@ -18,7 +18,7 @@ async function loadManifests() {
         join(GAMES_DIR, entry.name, 'manifest.json')
       ).json<GameManifest>()
       // Ensure entry field is set to the asset path
-      manifest.entry = `/games/${manifest.id}/game.js`
+      manifest.entry = `/assets/games/${manifest.id}/game.js`
       next.set(manifest.id, manifest)
     } catch {
       // directory has no valid manifest.json — skip silently
