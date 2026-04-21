@@ -31,6 +31,12 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_scores_game
     ON scores(game_id, score DESC);
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT    PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at INTEGER NOT NULL
+  );
 `)
 
 export default db

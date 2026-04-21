@@ -15,8 +15,13 @@ services:
       # Set to the header Caddy/PocketID forwards
       - AUTH_USER_HEADER=X-Forwarded-User
       - AUTH_EMAIL_HEADER=X-Forwarded-Email
-      # Flip to true when wiring up OIDC callback flow
+      # Flip to true when wiring up OIDC callback flow.
+      # Also set the four vars below — forward-auth vars are ignored in OIDC mode.
       - OIDC_MODE=false
+      #- OIDC_ISSUER=https://sso.example.com
+      #- OIDC_CLIENT_ID=
+      #- OIDC_CLIENT_SECRET=
+      #- OIDC_REDIRECT_URI=https://gamehaus.example.com/api/auth/callback
     labels:
       - "com.gamehaus.service=gamehaus"
 
