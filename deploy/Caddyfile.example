@@ -1,0 +1,37 @@
+# Caddyfile snippet — drop into your existing arr-stack Caddyfile.
+#
+# This assumes:
+#   - PocketID is running as a container named `pocketid` on the same Docker network
+#   - PocketID's forward-auth endpoint is at /verify
+#   - gamehaus container is named `gamehaus` on the same Docker network
+#
+# PocketID forward-auth injects:
+#   X-Forwarded-User  → matched by AUTH_USER_HEADER in docker-compose.yml
+#   X-Forwarded-Email → matched by AUTH_EMAIL_HEADER in docker-compose.yml
+#
+# Adjust the pocketid hostname/port to match your setup.
+
+gamehaus.example.com {
+    # Authenticate every request through PocketID before it reaches gamehaus.
+    # Unauthenticated requests get redirected to the PocketID login page.
+    forward_auth pocketid:8080 {
+        uri /verify
+        copy_headers X-Forwarded-User X-Forwarded-Email
+    }
+
+    reverse_proxy gamehaus:3000
+}
+
+
+# ── Alternative: Authelia in front of PocketID ──────────────────────────────
+# If your stack uses Authelia as the forward-auth layer with PocketID as the
+# OIDC backend, replace the forward_auth block above with this:
+#
+# forward_auth authelia:9091 {
+#     uri /api/verify
+#     copy_headers Remote-User Remote-Email Remote-Groups Remote-Name
+# }
+#
+# Then set in docker-compose.yml:
+#   AUTH_USER_HEADER=Remote-User
+#   AUTH_EMAIL_HEADER=Remote-Email

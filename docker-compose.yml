@@ -3,8 +3,8 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3000:3000"   # nginx (frontend)
-      - "3001:3001"   # bun api (internal, remove in prod — route via caddy)
+      # Expose only to localhost — Caddy terminates TLS and proxies to this
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./games:/app/games:ro
       - gamehaus_db:/app/data
@@ -12,16 +12,24 @@ services:
       - NODE_ENV=production
       - DB_PATH=/app/data/gamehaus.db
       - GAMES_DIR=/app/games
-      # Set to the header Caddy/PocketID forwards
+      # Headers that Caddy/PocketID forward after auth.
+      # Match these to whatever your forward-auth provider sends.
       - AUTH_USER_HEADER=X-Forwarded-User
       - AUTH_EMAIL_HEADER=X-Forwarded-Email
-      # Flip to true when wiring up OIDC callback flow.
-      # Also set the four vars below — forward-auth vars are ignored in OIDC mode.
+      # Set OIDC_MODE=true and configure the four vars below only if you want
+      # the backend to own the OIDC flow instead of relying on Caddy forward-auth.
       - OIDC_MODE=false
       #- OIDC_ISSUER=https://sso.example.com
       #- OIDC_CLIENT_ID=
       #- OIDC_CLIENT_SECRET=
       #- OIDC_REDIRECT_URI=https://gamehaus.example.com/api/auth/callback
+    healthcheck:
+      # Hits nginx → Bun, so both processes are verified in one check
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     labels:
       - "com.gamehaus.service=gamehaus"
 
