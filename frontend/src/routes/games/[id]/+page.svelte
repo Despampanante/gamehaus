@@ -15,10 +15,21 @@
   let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle')
 
   const SAVE_INTERVAL_MS = 15_000
+  const gameId = data.manifest.id
+  
+  // Cross-tab communication
+  let bc: BroadcastChannel | null = null
+  let lastLocalMove = Date.now() // Track when user last played
 
   async function saveState() {
     if (!mod) return
-    try { await api.putState(data.manifest.id, mod.getState()) } catch {}
+    try {
+      const state = mod.getState()
+      await api.putState(gameId, state)
+      // Notify other tabs that state was saved
+      bc?.postMessage({ type: 'state-saved', gameId })
+      lastLocalMove = Date.now()
+    } catch {}
   }
 
   let saveStatusTimer: ReturnType<typeof setTimeout>
@@ -26,6 +37,7 @@
   async function manualSave() {
     if (!mod || saveStatus === 'saving') return
     saveStatus = 'saving'
+    lastLocalMove = Date.now() // Mark as active
     await saveState()
     saveStatus = 'saved'
     clearTimeout(saveStatusTimer)
@@ -34,17 +46,48 @@
 
   async function submitScore() {
     if (!mod) return
-    try { await api.postScore(data.manifest.id, mod.getScore()) } catch {}
+    const score = mod.getScore()
+    // Only submit if score > 0 (avoid cluttering leaderboard with 0s)
+    if (score > 0) {
+      try {
+        await api.postScore(gameId, score)
+        // Notify other tabs of new score
+        bc?.postMessage({ type: 'score-submitted', gameId })
+      } catch {}
+    }
   }
 
   async function refreshScores() {
-    try { scores = await api.getScores(data.manifest.id) } catch {}
+    try { scores = await api.getScores(gameId) } catch {}
   }
 
   let saveTimer: ReturnType<typeof setInterval>
 
   onMount(async () => {
     try {
+      // Set up cross-tab communication
+      bc = new BroadcastChannel(`gamehaus-game-${gameId}`)
+      bc.onmessage = async (event) => {
+        if (event.data.type === 'score-submitted') {
+          // Refresh scores when another tab submits
+          await refreshScores()
+        } else if (event.data.type === 'state-saved' && mod) {
+          // If another tab saved state, check if we should sync
+          // Only sync if we haven't had recent local moves (idle for 5+ seconds)
+          const timeSinceLastMove = Date.now() - lastLocalMove
+          if (timeSinceLastMove > 5000) {
+            // Silently update state
+            if (mod.setState && typeof mod.setState === 'function') {
+              mod.setState(event.data.state)
+            } else {
+              // Fallback: reinitialize game with remote state
+              mod.destroy?.()
+              mod.init(container, event.data.state)
+            }
+          }
+        }
+      }
+
       // Load game module from the entry point specified in the manifest
       const imported = await import(/* @vite-ignore */ data.manifest.entry)
       mod = (imported.default ?? imported) as GameModule
@@ -67,6 +110,7 @@
 
   onDestroy(() => {
     clearInterval(saveTimer)
+    bc?.close()
     mod?.destroy?.()
   })
 </script>

@@ -191,13 +191,18 @@ class Game2048 {
       const dx = e.changedTouches[0].clientX - this._tx
       const dy = e.changedTouches[0].clientY - this._ty
       if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return
+      
+      // Prevent browser swipe gestures when swiping the game
+      e.preventDefault()
+      
       if (Math.abs(dx) > Math.abs(dy))
         this._move(this._remapDir(dx > 0 ? 'right' : 'left'))
       else
         this._move(this._remapDir(dy > 0 ? 'down' : 'up'))
     }
+    // Not passive so we can preventDefault on swipes
     this._container.addEventListener('touchstart', this._onTouchStart, { passive: true })
-    this._container.addEventListener('touchend',   this._onTouchEnd,   { passive: true })
+    this._container.addEventListener('touchend',   this._onTouchEnd,   { passive: false })
   }
 
   // ── Rendering ───────────────────────────────────────────────────────────────
@@ -207,7 +212,8 @@ class Game2048 {
     const fs = v >= 1024 ? '1.4rem' : v >= 128 ? '1.75rem' : '2rem'
     return `<div style="background:${bg};color:${fg};display:flex;align-items:center;` +
            `justify-content:center;font-size:${fs};font-weight:700;border-radius:4px;` +
-           `aspect-ratio:1;transition:background 0.1s;">${v || ''}</div>`
+           `aspect-ratio:1;transition:background 0.15s ease,transform 0.1s ease;` +
+           `transform:scale(1);">${v || ''}</div>`
   }
 
   _render() {
