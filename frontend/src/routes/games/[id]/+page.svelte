@@ -12,12 +12,24 @@
   let mod: GameModule | null = null
   let loadError = $state<string | null>(null)
   let scores = $state(data.scores)
+  let saveStatus = $state<'idle' | 'saving' | 'saved'>('idle')
 
   const SAVE_INTERVAL_MS = 15_000
 
   async function saveState() {
     if (!mod) return
     try { await api.putState(data.manifest.id, mod.getState()) } catch {}
+  }
+
+  let saveStatusTimer: ReturnType<typeof setTimeout>
+
+  async function manualSave() {
+    if (!mod || saveStatus === 'saving') return
+    saveStatus = 'saving'
+    await saveState()
+    saveStatus = 'saved'
+    clearTimeout(saveStatusTimer)
+    saveStatusTimer = setTimeout(() => (saveStatus = 'idle'), 2000)
   }
 
   async function submitScore() {
@@ -66,6 +78,14 @@
     <a href="/" class="back">← Games</a>
     <h1>{data.manifest.name}</h1>
     <span class="version">v{data.manifest.version}</span>
+    <button
+      class="save-btn"
+      class:saved={saveStatus === 'saved'}
+      onclick={manualSave}
+      disabled={!mod || saveStatus === 'saving'}
+    >
+      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved!' : 'Save'}
+    </button>
   </div>
 
   <div class="layout">
@@ -95,6 +115,21 @@
   .back:hover { opacity: 1; }
   h1 { margin: 0; font-size: 1.4rem; }
   .version { opacity: 0.35; font-size: 0.8rem; }
+  .save-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: inherit;
+    padding: 0.3rem 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    min-width: 4.5rem;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .save-btn:hover:not(:disabled) { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.25); }
+  .save-btn:disabled { opacity: 0.4; cursor: default; }
+  .save-btn.saved { border-color: #4ade80; color: #4ade80; }
 
   .layout {
     display: grid;
