@@ -69,22 +69,7 @@
       bc = new BroadcastChannel(`gamehaus-game-${gameId}`)
       bc.onmessage = async (event) => {
         if (event.data.type === 'score-submitted') {
-          // Refresh scores when another tab submits
           await refreshScores()
-        } else if (event.data.type === 'state-saved' && mod) {
-          // If another tab saved state, check if we should sync
-          // Only sync if we haven't had recent local moves (idle for 5+ seconds)
-          const timeSinceLastMove = Date.now() - lastLocalMove
-          if (timeSinceLastMove > 5000) {
-            // Silently update state
-            if (mod.setState && typeof mod.setState === 'function') {
-              mod.setState(event.data.state)
-            } else {
-              // Fallback: reinitialize game with remote state
-              mod.destroy?.()
-              mod.init(container, event.data.state)
-            }
-          }
         }
       }
 
@@ -100,11 +85,17 @@
     }
   })
 
-  // Save state + submit score before navigating away
+  // Save state before navigating away. Only submit score when the game actually
+  // ended — prevents a leaderboard entry on every mid-game page reload.
   beforeNavigate(async () => {
     clearInterval(saveTimer)
-    await Promise.all([saveState(), submitScore()])
-    await refreshScores()
+    const state = mod?.getState() as Record<string, unknown> | undefined
+    const ended = state?.over || state?.won
+    await saveState()
+    if (ended) {
+      await submitScore()
+      await refreshScores()
+    }
     mod?.destroy?.()
   })
 
