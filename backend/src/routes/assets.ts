@@ -21,7 +21,13 @@ assets.get('/:gameId/:file', async (c) => {
     ? 'application/javascript'
     : 'application/json'
 
-  return new Response(bunFile.stream(), { headers: { 'Content-Type': contentType } })
+  const arrayBuffer = await bunFile.arrayBuffer()
+  return new Response(arrayBuffer, {
+    headers: {
+      'Content-Type': contentType,
+      'Content-Length': arrayBuffer.byteLength.toString(),
+    }
+  })
 })
 
 export default assets
