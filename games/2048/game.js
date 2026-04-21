@@ -45,6 +45,7 @@ class Game2048 {
     this._best  = 0
     this._over  = false
     this._won   = false
+    this._rotation = 0   // visual rotation in degrees: 0 | 90 | 180 | 270
     this._container = null
     this._onKey     = null
     this._onTouchStart = null
@@ -62,8 +63,9 @@ class Game2048 {
       this._grid  = savedState.grid.map(r => [...r])
       this._score = savedState.score ?? 0
       this._best  = savedState.best  ?? 0
-      this._over  = savedState.over  ?? false
-      this._won   = savedState.won   ?? false
+      this._over     = savedState.over     ?? false
+      this._won      = savedState.won      ?? false
+      this._rotation = savedState.rotation ?? 0
     } else {
       this._spawnTile()
       this._spawnTile()
@@ -78,8 +80,9 @@ class Game2048 {
       grid:  this._grid.map(r => [...r]),
       score: this._score,
       best:  this._best,
-      over:  this._over,
-      won:   this._won,
+      over:     this._over,
+      won:      this._won,
+      rotation: this._rotation,
     }
   }
 
@@ -101,6 +104,20 @@ class Game2048 {
     if (!empty.length) return
     const [r, c] = empty[Math.floor(Math.random() * empty.length)]
     this._grid[r][c] = Math.random() < 0.9 ? 2 : 4
+  }
+
+  // Translate a screen-space direction into game-space, accounting for visual rotation.
+  // e.g. if the board is rotated 90° CW, pressing "up" should slide tiles toward what
+  // was originally the left edge — so we map up → left.
+  _remapDir(dir) {
+    const cw = ['up', 'right', 'down', 'left']
+    const steps = this._rotation / 90
+    return cw[(cw.indexOf(dir) + (4 - steps)) % 4]
+  }
+
+  _rotateBoard() {
+    this._rotation = (this._rotation + 90) % 360
+    this._render()
   }
 
   _move(dir) {
@@ -162,7 +179,7 @@ class Game2048 {
   _attachListeners() {
     this._onKey = (e) => {
       const map = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }
-      if (map[e.key]) { e.preventDefault(); this._move(map[e.key]) }
+      if (map[e.key]) { e.preventDefault(); this._move(this._remapDir(map[e.key])) }
     }
     document.addEventListener('keydown', this._onKey)
 
@@ -175,9 +192,9 @@ class Game2048 {
       const dy = e.changedTouches[0].clientY - this._ty
       if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return
       if (Math.abs(dx) > Math.abs(dy))
-        this._move(dx > 0 ? 'right' : 'left')
+        this._move(this._remapDir(dx > 0 ? 'right' : 'left'))
       else
-        this._move(dy > 0 ? 'down' : 'up')
+        this._move(this._remapDir(dy > 0 ? 'down' : 'up'))
     }
     this._container.addEventListener('touchstart', this._onTouchStart, { passive: true })
     this._container.addEventListener('touchend',   this._onTouchEnd,   { passive: true })
@@ -216,9 +233,11 @@ class Game2048 {
         `<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;">` +
           scoreBox('Score', this._score) +
           scoreBox('Best',  this._best) +
-          `<button id="g-new" style="${BTN_STYLE};margin-left:auto;">New Game</button>` +
+          `<button id="g-rotate" style="${BTN_STYLE};margin-left:auto;" title="Rotate board 90°">↻</button>` +
+          `<button id="g-new" style="${BTN_STYLE}">New Game</button>` +
         `</div>` +
-        `<div style="position:relative;background:#bbada0;border-radius:6px;padding:.5rem;` +
+        `<div style="transform:rotate(${this._rotation}deg);transition:transform .3s ease;` +
+             `position:relative;background:#bbada0;border-radius:6px;padding:.5rem;` +
              `display:grid;grid-template-columns:repeat(${SIZE},1fr);gap:.5rem;">` +
           this._grid.flat().map(v => this._tileHTML(v)).join('') +
           overlay +
@@ -227,7 +246,9 @@ class Game2048 {
           `Arrow keys or swipe to move</p>` +
       `</div>`
 
-    // Wire up all New Game buttons (top bar + overlay use same id)
+    this._container.querySelector('#g-rotate')
+      ?.addEventListener('click', () => this._rotateBoard())
+
     this._container.querySelectorAll('#g-new').forEach(btn => {
       btn.addEventListener('click', () => {
         this._won = false
