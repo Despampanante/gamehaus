@@ -3,9 +3,7 @@ FROM node:22-alpine AS frontend-build
 WORKDIR /build/frontend
 
 COPY frontend/package*.json ./
-# Use npm install so the image builds before a lockfile is committed.
-# Switch to `npm ci` once package-lock.json is checked in.
-RUN npm install
+RUN npm ci
 
 COPY frontend/ ./
 COPY shared/ ../shared/
@@ -15,10 +13,8 @@ RUN npm run build
 FROM oven/bun:1-alpine AS backend-build
 WORKDIR /build/backend
 
-COPY backend/package*.json ./
-# Use bun install so the image builds before bun.lockb is committed.
-# Switch to `bun install --frozen-lockfile` once bun.lockb is checked in.
-RUN bun install
+COPY backend/package.json backend/bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY backend/ ./
 COPY shared/ ../shared/
