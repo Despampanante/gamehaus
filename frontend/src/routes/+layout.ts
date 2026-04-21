@@ -1,9 +1,15 @@
 import type { LayoutLoad } from './$types'
+import { api } from '$lib/api'
 
-export const load: LayoutLoad = async ({ fetch }) => {
+// Disable SSR — this is a fully client-side SPA via adapter-static
+export const ssr = false
+export const prerender = false
+
+export const load: LayoutLoad = async () => {
   try {
-    const res = await fetch('/api/me')
-    if (res.ok) return { user: await res.json() }
-  } catch {}
-  return { user: null }
+    const user = await api.me()
+    return { user }
+  } catch {
+    return { user: null }
+  }
 }
