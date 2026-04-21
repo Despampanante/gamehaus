@@ -9,6 +9,17 @@ games.use('*', authMiddleware)
 
 games.get('/', (c) => c.json(getManifests()))
 
+games.get('/:id', (c) => {
+  const gameId = c.req.param('id')
+  const manifest = getManifest(gameId)
+  
+  if (!manifest) {
+    return c.json({ error: 'Game not found' }, 404)
+  }
+  
+  return c.json(manifest)
+})
+
 games.get('/:id/state', (c) => {
   const user = c.get('user')
   const gameId = c.req.param('id')

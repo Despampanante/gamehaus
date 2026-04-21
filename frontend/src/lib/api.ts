@@ -17,6 +17,7 @@ const json = (body: unknown) => ({
 export const api = {
   me:         ()                        => req<User>('/api/me'),
   games:      ()                        => req<GameManifest[]>('/api/games'),
+  getGame:    (id: string)              => req<GameManifest>(`/api/games/${id}`),
   getState:   (id: string)              => req<{ state: unknown }>(`/api/games/${id}/state`),
   putState:   (id: string, state: unknown) =>
     req<{ ok: boolean }>(`/api/games/${id}/state`, { method: 'PUT', ...json({ state }) }),

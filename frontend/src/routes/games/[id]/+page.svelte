@@ -45,8 +45,8 @@
 
   onMount(async () => {
     try {
-      // Dynamic import — Vite/nginx proxy serves /games/:id/game.js from the volume
-      const imported = await import(/* @vite-ignore */ `/games/${data.manifest.id}/game.js`)
+      // Load game module from the entry point specified in the manifest
+      const imported = await import(/* @vite-ignore */ data.manifest.entry)
       mod = (imported.default ?? imported) as GameModule
       mod.init(container, data.savedState)
 

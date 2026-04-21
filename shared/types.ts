@@ -3,6 +3,7 @@ export interface GameManifest {
   name: string
   description: string
   version: string
+  entry: string
 }
 
 export interface GameModule {

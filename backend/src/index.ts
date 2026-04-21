@@ -18,7 +18,7 @@ app.get('/api/health', (c) => c.json({ ok: true }))
 app.route('/api/auth', auth)
 app.route('/api/games', games)
 app.route('/api/me', me)
-app.route('/games', assets)
+app.route('/assets/games', assets)
 
 export default {
   port: 3001,
